@@ -3,28 +3,36 @@ paramSweep <- function(seu, PCs=1:10, sct = FALSE, num.cores=1) {
   ## Set pN-pK param sweep ranges
   pK <- c(0.0005, 0.001, 0.005, seq(0.01,0.3,by=0.01))
   pN <- seq(0.05,0.3,by=0.05)
-
+  
   ## Remove pK values with too few cells
   min.cells <- round(nrow(seu@meta.data)/(1-0.05) - nrow(seu@meta.data))
   pK.test <- round(pK*min.cells)
   pK <- pK[which(pK.test >= 1)]
-
+  
   ## Extract pre-processing parameters from original data analysis workflow
   orig.commands <- seu@commands
-
+  useSCT=sct
   ## Down-sample cells to 10000 (when applicable) for computational effiency
   if (nrow(seu@meta.data) > 10000) {
     real.cells <- rownames(seu@meta.data)[sample(1:nrow(seu@meta.data), 10000, replace=FALSE)]
-    data <- seu@assays$RNA$counts[ , real.cells]
+    if (useSCT) {
+      data <- seu@assays$SCT@counts[ , real.cells]
+    } else {
+      data <- seu@assays$RNA@counts[ , real.cells]
+    }
     n.real.cells <- ncol(data)
   }
-
-  if (nrow(seu@meta.data) <= 10000){
+  
+  if (nrow(seu@meta.data) <= 10000) {
     real.cells <- rownames(seu@meta.data)
-    data <- seu@assays$RNA$counts
+    if (useSCT) {
+      data <- seu@assays$SCT@counts
+    } else {
+      data <- seu@assays$RNA@counts
+    }
     n.real.cells <- ncol(data)
   }
-
+  
   ## Iterate through pN, computing pANN vectors at varying pK
   #no_cores <- detectCores()-1
   if(num.cores>1){
@@ -53,7 +61,7 @@ paramSweep <- function(seu, PCs=1:10, sct = FALSE, num.cores=1) {
                       PCs,
                       sct)
   }
-
+  
   ## Write parallelized output into list
   sweep.res.list <- list()
   list.ind <- 0
@@ -63,7 +71,7 @@ paramSweep <- function(seu, PCs=1:10, sct = FALSE, num.cores=1) {
       sweep.res.list[[list.ind]] <- output2[[i]][[j]]
     }
   }
-
+  
   ## Assign names to list of results
   name.vec <- NULL
   for (j in 1:length(pN)) {
@@ -71,5 +79,5 @@ paramSweep <- function(seu, PCs=1:10, sct = FALSE, num.cores=1) {
   }
   names(sweep.res.list) <- name.vec
   return(sweep.res.list)
-
+  
 }
